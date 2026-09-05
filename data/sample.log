@@ -1,0 +1,36 @@
+2026-09-04 09:15:01 Failed login for user admin from 192.168.1.10
+2026-09-04 09:15:05 Failed login for user admin from 192.168.1.10
+2026-09-04 09:15:08 Failed login for user admin from 192.168.1.10
+2026-09-04 09:15:12 Failed login for user admin from 192.168.1.10
+2026-09-04 09:15:16 Failed login for user admin from 192.168.1.10
+2026-09-04 09:15:20 Successful login for user admin from 192.168.1.10
+
+2026-09-04 10:05:12 Successful login for user john from 192.168.1.20
+2026-09-04 10:10:33 Failed login for user john from 192.168.1.20
+2026-09-04 10:10:38 Successful login for user john from 192.168.1.20
+
+2026-09-04 11:20:10 Failed login for user root from 192.168.1.50
+2026-09-04 11:20:13 Failed login for user root from 192.168.1.50
+2026-09-04 11:20:16 Failed login for user root from 192.168.1.50
+2026-09-04 11:20:19 Failed login for user root from 192.168.1.50
+2026-09-04 11:20:22 Failed login for user root from 192.168.1.50
+2026-09-04 11:20:25 Failed login for user root from 192.168.1.50
+2026-09-04 11:20:30 Successful login for user root from 192.168.1.50
+
+2026-09-04 12:30:45 Process started: /usr/bin/python3
+2026-09-04 12:31:02 Process started: /usr/bin/nginx
+2026-09-04 12:31:15 Process started: /usr/bin/sshd
+
+2026-09-04 13:45:10 Network connection from 192.168.1.30 to 192.168.1.100 port 22
+2026-09-04 13:45:12 Network connection from 192.168.1.30 to 192.168.1.100 port 80
+2026-09-04 13:45:14 Network connection from 192.168.1.30 to 192.168.1.100 port 443
+
+2026-09-04 14:10:01 Failed login for user test from 10.0.0.25
+2026-09-04 14:10:04 Failed login for user test from 10.0.0.25
+2026-09-04 14:10:07 Failed login for user test from 10.0.0.25
+2026-09-04 14:10:10 Failed login for user test from 10.0.0.25
+2026-09-04 14:10:15 Failed login for user test from 10.0.0.25
+
+2026-09-04 15:25:30 Successful login for user alice from 192.168.1.40
+2026-09-04 15:30:45 Successful login for user bob from 192.168.1.41
+2026-09-04 16:05:12 Successful login for user admin from 192.168.1.10
