@@ -18,42 +18,6 @@
         "total_attempts": 7
     },
     {
-        "ip": "/usr/bin/python3",
-        "failed_attempts": 0,
-        "successful_attempts": 0,
-        "total_attempts": 0
-    },
-    {
-        "ip": "/usr/bin/nginx",
-        "failed_attempts": 0,
-        "successful_attempts": 0,
-        "total_attempts": 0
-    },
-    {
-        "ip": "/usr/bin/sshd",
-        "failed_attempts": 0,
-        "successful_attempts": 0,
-        "total_attempts": 0
-    },
-    {
-        "ip": "22",
-        "failed_attempts": 0,
-        "successful_attempts": 0,
-        "total_attempts": 0
-    },
-    {
-        "ip": "80",
-        "failed_attempts": 0,
-        "successful_attempts": 0,
-        "total_attempts": 0
-    },
-    {
-        "ip": "443",
-        "failed_attempts": 0,
-        "successful_attempts": 0,
-        "total_attempts": 0
-    },
-    {
         "ip": "10.0.0.25",
         "failed_attempts": 5,
         "successful_attempts": 0,

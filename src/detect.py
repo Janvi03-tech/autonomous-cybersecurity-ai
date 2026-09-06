@@ -1,24 +1,33 @@
-def detect_suspicious(events, threshold=3):
-    failed_count = {}
+import pandas as pd
 
-    for event in events:
-        # Match failed login safely
-        if event.get("event_type", "").lower() == "failed login":
-            ip = event.get("source_ip")
 
-            # Skip entries without a valid IP
-            if not ip or ip == "No IP found":
-                continue
+# Load ML results
+df = pd.read_csv("data/ml_results.csv")
 
-            if ip not in failed_count:
-                failed_count[ip] = 0
 
-            failed_count[ip] += 1
+# Convert prediction into readable words
+df["status"] = df["prediction"].apply(
+    lambda x: "anomaly" if x == -1 else "normal"
+)
 
-    # Print counts and alert on suspicious IPs
-    for ip, count in failed_count.items():
-        print(f"{ip} → {count} failed logins")
-        if count >= threshold:
-            print(f" {ip} → Suspicious activity!")
 
-    return failed_count
+print("\nAnomaly Detection Results:")
+print(df)
+
+
+# Get only anomalies
+anomalies = df[df["status"] == "anomaly"]
+
+
+print("\nDetected Anomalies:")
+print(anomalies)
+
+
+# Save anomalies
+anomalies.to_csv(
+    "data/anomalies.csv",
+    index=False
+)
+
+
+print("\nSaved anomalies to data/anomalies.csv")

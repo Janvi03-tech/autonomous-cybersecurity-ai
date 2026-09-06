@@ -1,0 +1,14 @@
+[
+    {
+        "ip": "192.168.1.10",
+        "failed_attempts": 5,
+        "successful_attempts": 2,
+        "pattern": "Multiple failed logins followed by successful login"
+    },
+    {
+        "ip": "192.168.1.50",
+        "failed_attempts": 6,
+        "successful_attempts": 1,
+        "pattern": "Multiple failed logins followed by successful login"
+    }
+]

@@ -1,0 +1,12 @@
+Brute force attacks involve repeated attempts to guess
+credentials such as usernames and passwords.
+
+Common indicators include many failed login attempts
+from the same source IP address.
+
+A successful login after many failed attempts can be
+an important event to investigate.
+
+Security teams should review the source IP, timestamps,
+username, number of failed attempts, and successful
+authentication events.

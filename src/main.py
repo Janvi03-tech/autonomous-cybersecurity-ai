@@ -43,7 +43,7 @@ features = create_features(events)
 
 print("\nML Features:\n")
 
-print("IP\t\t\tFailed\tSuccessful\tTotal")
+print("\tIP  \tFailed\tSuccessful\tTotal")
 
 for feature in features:
 

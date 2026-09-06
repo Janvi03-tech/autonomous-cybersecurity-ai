@@ -1,0 +1,30 @@
+[
+    {
+        "incident_id": "INC-001",
+        "ip": "192.168.1.10",
+        "severity": "HIGH",
+        "type": "Possible Brute Force",
+        "pattern": "Multiple failed logins followed by successful login",
+        "failed_attempts": 5,
+        "successful_attempts": 2,
+        "mitre": {
+            "technique_id": "T1110",
+            "technique": "Brute Force",
+            "tactic": "Credential Access"
+        }
+    },
+    {
+        "incident_id": "INC-002",
+        "ip": "192.168.1.50",
+        "severity": "HIGH",
+        "type": "Possible Brute Force",
+        "pattern": "Multiple failed logins followed by successful login",
+        "failed_attempts": 6,
+        "successful_attempts": 1,
+        "mitre": {
+            "technique_id": "T1110",
+            "technique": "Brute Force",
+            "tactic": "Credential Access"
+        }
+    }
+]

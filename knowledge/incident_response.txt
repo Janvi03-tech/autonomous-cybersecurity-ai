@@ -1,0 +1,12 @@
+Incident response is the process of investigating,
+containing, and recovering from security incidents.
+
+Important steps include:
+
+1. Identify the suspicious activity.
+2. Collect relevant evidence.
+3. Determine the scope of the incident.
+4. Investigate the affected systems.
+5. Contain the incident.
+6. Recover normal operations.
+7. Document the incident.
