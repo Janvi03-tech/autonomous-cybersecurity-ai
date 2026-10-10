@@ -1,52 +1,68 @@
+
 import json
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from read_logs import read_logs
 from log_parser import parse_log
 from normalize import normalize_event
 from feature import create_features
+from db_reader import read_database_events
 
 
-# STEP 1: Read raw logs
-logs = read_logs("data/sample.log")
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env", override=True)
+
+# Set LOG_SOURCE=database to read PostgreSQL; default is sample.
+LOG_SOURCE = os.getenv("LOG_SOURCE", "sample").strip().lower()
 
 
-# STEP 2: Parse and normalize logs
-events = []
+# STEP 1: Load events
+if LOG_SOURCE == "database":
+    events = read_database_events(limit=1000)
+    print(f"Loaded {len(events)} events from PostgreSQL.")
 
-for log in logs:
+elif LOG_SOURCE == "sample":
+    logs = read_logs(str(BASE_DIR / "data" / "sample.log"))
+    events = []
 
-    if log.strip() == "":
-        continue
+    for log in logs:
+        if not log.strip():
+            continue
 
-    parsed_event = parse_log(log.strip())
+        parsed_event = parse_log(log.strip())
+        if parsed_event is None:
+            continue
 
-    normalized_event = normalize_event(parsed_event)
+        normalized_event = normalize_event(parsed_event)
+        if normalized_event is not None:
+            events.append(normalized_event)
 
-    events.append(normalized_event)
+    print(f"Loaded {len(events)} events from the sample log.")
+
+else:
+    raise ValueError(
+        f"Unsupported LOG_SOURCE={LOG_SOURCE!r}. "
+        "Use 'sample' or 'database'."
+    )
 
 
-# STEP 3: Save normalized events to JSON
+# STEP 2: Save normalized events
+with open(BASE_DIR / "data" / "normalized_logs.json", "w", encoding="utf-8") as file:
+    json.dump(events, file, indent=4, default=str)
 
-with open("data/normalized_logs.json", "w") as file:
-    json.dump(events, file, indent=4)
-
-
-print(f"Saved {len(events)} normalized events.")
+print(f"Saved {len(events)} events to normalized_logs.json.")
 
 
-# STEP 4: Create features
-
+# STEP 3: Create features
 features = create_features(events)
 
-
-# STEP 5: Display features
-
 print("\nML Features:\n")
-
-print("\tIP  \tFailed\tSuccessful\tTotal")
+print("IP\t\tFailed\tSuccessful\tTotal")
 
 for feature in features:
-
     print(
         f"{feature['ip']}\t"
         f"{feature['failed_attempts']}\t"
@@ -55,5 +71,6 @@ for feature in features:
     )
 
 
-with open("data/ml_features.json", "w") as file:
+# STEP 4: Save features
+with open(BASE_DIR / "data" / "ml_features.json", "w", encoding="utf-8") as file:
     json.dump(features, file, indent=4)
