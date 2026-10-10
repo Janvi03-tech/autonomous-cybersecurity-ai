@@ -1,4 +1,5 @@
-﻿from datetime import datetime
+﻿
+from datetime import datetime
 
 
 def parse_log(log):
@@ -8,15 +9,13 @@ def parse_log(log):
         return None
 
     parts = log.split()
-
-    # Every supported log must begin with a valid timestamp.
     if len(parts) < 3:
         return None
 
     try:
         timestamp = datetime.strptime(
             f"{parts[0]} {parts[1]}",
-            "%Y-%m-%d %H:%M:%S"
+            "%Y-%m-%d %H:%M:%S",
         )
     except ValueError:
         return None
@@ -33,36 +32,37 @@ def parse_log(log):
         event_type = "Unknown event"
 
     username = None
-    if "user" in parts:
-        user_index = parts.index("user")
-        if user_index + 1 < len(parts):
-            username = parts[user_index + 1]
+    for index, part in enumerate(parts):
+        if part == "user" and index + 1 < len(parts):
+            username = parts[index + 1]
+            break
+        if part.startswith("user="):
+            username = part.split("=", 1)[1] or None
+            break
 
     source_ip = None
-    destination_ip = None
-    port = None
-
     if "from" in parts:
         ip_index = parts.index("from")
         if ip_index + 1 < len(parts):
             source_ip = parts[ip_index + 1]
 
-    if event_type == "Network connection":
-        if "to" in parts:
-            ip_index = parts.index("to")
-            if ip_index + 1 < len(parts):
-                destination_ip = parts[ip_index + 1]
+    destination_ip = None
+    if event_type == "Network connection" and "to" in parts:
+        destination_index = parts.index("to")
+        if destination_index + 1 < len(parts):
+            destination_ip = parts[destination_index + 1]
 
-        if "port" in parts:
-            port_index = parts.index("port")
-            if port_index + 1 < len(parts):
-                try:
-                    port = int(parts[port_index + 1])
-                except ValueError:
-                    port = None
+    port = None
+    if event_type == "Network connection" and "port" in parts:
+        port_index = parts.index("port")
+        if port_index + 1 < len(parts):
+            try:
+                port = int(parts[port_index + 1])
+            except ValueError:
+                return None
 
     return {
-        "timestamp": timestamp.isoformat() + "Z",
+        "timestamp": timestamp.isoformat(),
         "event_type": event_type,
         "username": username,
         "source_ip": source_ip,

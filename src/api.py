@@ -1,8 +1,14 @@
+import csv
 import json
-from pathlib import Path
-from threading import Lock
-from uuid import uuid4
 
+import os
+from pathlib import Path
+from uuid import uuid4
+from datetime import datetime
+
+import psycopg
+from psycopg.rows import dict_row
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -10,40 +16,51 @@ app = FastAPI(title="Autonomous Cybersecurity AI")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-EVENTS_FILE = DATA_DIR / "events.json"
-EVENTS_LOCK = Lock()
+
+load_dotenv(BASE_DIR / ".env")
 
 
 class LogInput(BaseModel):
     message: str = Field(min_length=1, max_length=5000)
 
 
-def load_events():
-    if not EVENTS_FILE.exists():
-        return []
+def get_connection():
+    """Open a PostgreSQL connection using environment settings."""
+    required = [
+        "DB_HOST", "DB_PORT", "DB_NAME",
+        "DB_USER", "DB_PASSWORD"
+    ]
+    missing = [key for key in required if not os.getenv(key)]
+    if missing:
+        raise RuntimeError(
+            "Missing database configuration: " + ", ".join(missing)
+        )
 
-    try:
-        with EVENTS_FILE.open("r", encoding="utf-8") as file:
-            return json.load(file)
-    except (json.JSONDecodeError, OSError) as exc:
-        raise HTTPException(
-            status_code=500,
-            detail="Could not read stored events."
-        ) from exc
+    return psycopg.connect(
+        host=os.environ["DB_HOST"],
+        port=int(os.environ["DB_PORT"]),
+        dbname=os.environ["DB_NAME"],
+        user=os.environ["DB_USER"],
+        password=os.environ["DB_PASSWORD"],
+        row_factory=dict_row,
+    )
 
 
 def parse_message(message):
-    from datetime import datetime
+    message = message.strip()
 
-    parts = message.strip().split()
-    if len(parts) < 2:
+    if not message:
+        return None
+
+    parts = message.split()
+    if len(parts) < 3:
         return None
 
     try:
         timestamp = datetime.strptime(
             f"{parts[0]} {parts[1]}",
-            "%Y-%m-%d %H:%M:%S"
-        ).isoformat() + "Z"
+            "%Y-%m-%d %H:%M:%S",
+        )
     except ValueError:
         return None
 
@@ -58,20 +75,36 @@ def parse_message(message):
         event_type = "Network connection"
 
     username = None
-    if "user" in parts:
-        index = parts.index("user")
-        if index + 1 < len(parts):
+    for index, part in enumerate(parts):
+        if part == "user" and index + 1 < len(parts):
             username = parts[index + 1]
+            break
+        if part.startswith("user="):
+            username = part.split("=", 1)[1] or None
+            break
 
     source_ip = None
     if "from" in parts:
         index = parts.index("from")
         if index + 1 < len(parts):
             source_ip = parts[index + 1]
-    elif "Network connection" in message and "from" in parts:
-        index = parts.index("from")
-        if index + 1 < len(parts):
-            source_ip = parts[index + 1]
+
+    destination_ip = None
+    port = None
+
+    if event_type == "Network connection":
+        if "to" in parts:
+            index = parts.index("to")
+            if index + 1 < len(parts):
+                destination_ip = parts[index + 1]
+
+        if "port" in parts:
+            index = parts.index("port")
+            if index + 1 < len(parts):
+                try:
+                    port = int(parts[index + 1])
+                except ValueError:
+                    return None
 
     return {
         "event_id": str(uuid4()),
@@ -79,8 +112,10 @@ def parse_message(message):
         "event_type": event_type,
         "username": username,
         "source_ip": source_ip,
-        "raw_message": message.strip(),
-        "source": "api"
+        "destination_ip": destination_ip,
+        "port": port,
+        "raw_message": message,
+        "source": "api",
     }
 
 
@@ -91,57 +126,187 @@ def home():
 
 @app.get("/alerts")
 def get_alerts():
-    with (DATA_DIR / "alerts.json").open("r", encoding="utf-8") as file:
-        return json.load(file)
+    try:
+        with (DATA_DIR / "alerts.json").open(
+            "r", encoding="utf-8"
+        ) as file:
+            return __import__("json").load(file)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(
+            status_code=500, detail="Could not read alerts."
+        ) from exc
 
 
 @app.get("/incidents")
 def get_incidents():
-    with (DATA_DIR / "incidents.json").open("r", encoding="utf-8") as file:
-        return json.load(file)
+    try:
+        with (DATA_DIR / "incidents.json").open(
+            "r", encoding="utf-8"
+        ) as file:
+            return __import__("json").load(file)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(
+            status_code=500, detail="Could not read incidents."
+        ) from exc
 
 
 @app.get("/correlations")
 def get_correlations():
-    with (DATA_DIR / "correlations.json").open("r", encoding="utf-8") as file:
-        return json.load(file)
+    try:
+        with (DATA_DIR / "correlations.json").open(
+            "r", encoding="utf-8"
+        ) as file:
+            return __import__("json").load(file)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(
+            status_code=500, detail="Could not read correlations."
+        ) from exc
 
 
 @app.post("/logs", status_code=201)
 def ingest_log(log: LogInput):
     event = parse_message(log.message)
+
     if event is None:
         raise HTTPException(
             status_code=422,
-            detail="Unsupported log format. Expected a timestamp like YYYY-MM-DD HH:MM:SS."
+            detail=(
+                "Unsupported log format. Expected a timestamp "
+                "like YYYY-MM-DD HH:MM:SS."
+            ),
         )
 
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    # Save the event to PostgreSQL first.
+    try:
+        with get_connection() as conn:
+            saved = conn.execute(
+                """
+                INSERT INTO events (
+                    event_id, timestamp, event_type, username,
+                    source_ip, destination_ip, port, raw_message, source
+                )
+                VALUES (
+                    %(event_id)s, %(timestamp)s, %(event_type)s,
+                    %(username)s, %(source_ip)s, %(destination_ip)s,
+                    %(port)s, %(raw_message)s, %(source)s
+                )
+                RETURNING *
+                """,
+                event,
+            ).fetchone()
 
-    with EVENTS_LOCK:
-        events = load_events()
-        events.append(event)
-        with EVENTS_FILE.open("w", encoding="utf-8") as file:
-            json.dump(events, file, indent=2)
+    except psycopg.Error as exc:
+        print(f"PostgreSQL error while saving event: {exc}")
+        database_error()
 
-    return event
+    return dict(saved)
 
 
 @app.get("/events")
-def get_events(limit: int = 100):
+def get_events(
+    limit: int = 100,
+    offset: int = 0,
+    event_type: str | None = None,
+    source_ip: str | None = None,
+):
     if limit < 1 or limit > 1000:
         raise HTTPException(
             status_code=422,
-            detail="limit must be between 1 and 1000."
+            detail="limit must be between 1 and 1000.",
         )
 
-    return load_events()[-limit:]
+    if offset < 0:
+        raise HTTPException(
+            status_code=422,
+            detail="offset must be zero or greater.",
+        )
+
+    query = "SELECT * FROM events"
+    conditions = []
+    params = []
+
+    if event_type:
+        conditions.append("event_type = %s")
+        params.append(event_type)
+
+    if source_ip:
+        conditions.append("source_ip = %s::inet")
+        params.append(source_ip)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY id DESC LIMIT %s OFFSET %s"
+    params.extend([limit, offset])
+
+    try:
+        with get_connection() as conn:
+            rows = conn.execute(query, params).fetchall()
+        return rows
+
+    except psycopg.Error as exc:
+        print(f"PostgreSQL error while reading events: {exc}")
+        database_error()
+
+
 
 
 @app.get("/events/{event_id}")
 def get_event(event_id: str):
-    for event in load_events():
-        if event.get("event_id") == event_id:
-            return event
+    try:
+        with get_connection() as conn:
+            event = conn.execute(
+                "SELECT * FROM events WHERE event_id = %s",
+                (event_id,),
+            ).fetchone()
+        if event is None:
+            raise HTTPException(
+                status_code=404, detail="Event not found."
+            )
+        return event
+    except psycopg.Error as exc:
+        print(f"PostgreSQL error while reading event: {exc}")
+        database_error()
 
-    raise HTTPException(status_code=404, detail="Event not found.")
+@app.get("/anomalies")
+def get_anomalies():
+    results_file = DATA_DIR / "ml_results.csv"
+
+    try:
+        with results_file.open("r", encoding="utf-8", newline="") as file:
+            rows = list(csv.DictReader(file))
+
+        anomalies = []
+        for row in rows:
+            try:
+                prediction = int(row["prediction"])
+                failed = int(row["failed_attempts"])
+                successful = int(row["successful_attempts"])
+                total = int(row["total_attempts"])
+            except (KeyError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail="ML results file has an invalid format.",
+                ) from exc
+
+            if prediction == -1:
+                anomalies.append({
+                    "ip": row["ip"],
+                    "failed_attempts": failed,
+                    "successful_attempts": successful,
+                    "total_attempts": total,
+                    "prediction": prediction,
+                    "status": "anomaly",
+                    "note": "Model flag for investigation; not a confirmed attack.",
+                })
+
+        return {
+            "count": len(anomalies),
+            "anomalies": anomalies,
+        }
+
+    except OSError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not read ML results. Run the ML model first.",
+        ) from exc

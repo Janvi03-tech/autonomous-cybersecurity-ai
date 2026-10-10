@@ -6,3 +6,4 @@ python-dotenv
 google-genai
 requests
 streamlit
+psycopg[binary]
