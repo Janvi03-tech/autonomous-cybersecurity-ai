@@ -1,4 +1,4 @@
-# Autonomous Cybersecurity AI
+﻿# Autonomous Cybersecurity AI
 
 A Python-based cybersecurity project for processing security logs, storing normalized events in PostgreSQL, exposing security data through a FastAPI backend, and supporting downstream anomaly detection and investigation.
 
@@ -6,8 +6,10 @@ A Python-based cybersecurity project for processing security logs, storing norma
 
 - Security log parsing and normalization
 - PostgreSQL-backed event storage
+- Repeatable database schema initialization
 - Sample-log import with duplicate handling
-- FastAPI endpoints for event ingestion, filtering, pagination, alerts, incidents, and correlations
+- FastAPI endpoints for event ingestion, filtering, and pagination
+- Endpoints for alerts, incidents, correlations, and anomaly-related results
 - Feature generation and anomaly detection with scikit-learn Isolation Forest
 - Streamlit dashboard
 - Local knowledge search for investigation support
@@ -15,7 +17,7 @@ A Python-based cybersecurity project for processing security logs, storing norma
 ## Prerequisites
 
 - Python and pip
-- PostgreSQL
+- PostgreSQL with the `psql` command-line client available
 - Git (for cloning the repository)
 
 Use a Python version supported by the dependencies listed in `requirements.txt`.
@@ -34,7 +36,7 @@ If `.venv` already exists, activate it rather than recreating it.
 
 ## Database Configuration
 
-Create the PostgreSQL database `cybersecurity_ai` and configure the connection in a local `.env` file:
+Create the PostgreSQL database `cybersecurity_ai` if it does not already exist. Configure the connection in a local `.env` file at the project root:
 
 ```dotenv
 DB_HOST=localhost
@@ -46,24 +48,36 @@ DB_PASSWORD=your_local_password
 
 Replace the password placeholder with your local PostgreSQL password. Do not commit `.env` or expose database credentials.
 
-Ensure the PostgreSQL service is running and the required `events` table has been created before importing sample events or using database-backed endpoints.
+Ensure the PostgreSQL service is running.
+
+### Initialize the database schema
+
+Run this from the project root:
+
+```powershell
+python .\src\init_db.py
+```
+
+The initializer reads `sql/schema.sql` and runs it through `psql` using the database settings in `.env`. The schema uses `CREATE TABLE IF NOT EXISTS`, so it can be run again without replacing an existing `events` table.
+
+The initializer creates the table for a fresh database. It does not migrate or repair an existing table with a different schema. The PostgreSQL database itself must exist before running the initializer.
 
 ## Import Sample Events
 
-Import the sample logs into PostgreSQL:
+After initializing the database, import the sample logs:
 
 ```powershell
 python .\src\import_sample_to_db.py
 ```
 
-The importer uses deterministic event IDs and skips events that already exist. Re-running the import should not create duplicate sample records.
+The importer uses deterministic event IDs and skips sample events that already exist. Re-running the import should not create duplicate sample records.
 
 ## Start the API
 
 From the project root, run:
 
 ```powershell
-python -m uvicorn api:app --app-dir src --reload
+python -m uvicorn src.api:app --reload
 ```
 
 The local API is available at:
@@ -143,5 +157,6 @@ The test suite covers API behavior, request validation, log parsing, and normali
 - Sample logs are used for development and testing; production log-source integrations require separate configuration and validation.
 - Anomaly predictions and correlations require investigation and should not be treated as proof of malicious activity.
 - Keep credentials in environment variables and never commit `.env`.
+- The database initializer requires PostgreSQL's `psql` client to be installed and available at the configured path or on `PATH`.
 - Response actions should remain simulated until appropriate authorization, safeguards, and approval workflows are implemented.
 - Run the API in a trusted development environment; review authentication, authorization, and deployment security before exposing it beyond localhost.
